@@ -1,0 +1,100 @@
+# self-regulatory circuit
+import tellurium as te
+import numpy as np
+import pylab as plt
+
+# set simulation time
+timeBegin = 0
+timeEnd = 5
+timePoint = 1000
+timeBeginPlot = 0;#35
+Gval = 1   # concentration of gene
+a1val = 50   # production rate constant
+
+r = te.loada ('''
+     # production reactions
+     J1: G -> G + X1; a0*G + a*G*((p*X1^n + q*K^n) / (X1^n + K^n)); 
+     
+     # degradation reactions
+     J3: X1  -> ; b1*X1;
+
+     # set initial condition     
+     X1 = 0; G = 1; 
+
+     # production and degradation rate constants
+     a = 50; a0 = 10;
+     b1 = 1;
+
+     # association - dissociation rate constant
+     K = 10000 # larger K means weaker feedback. Very large K ~ no feedback
+     n = 1; # Hill co-efficient
+
+     # positive vs negative feedback
+     # positive has p = 1 & q = 0; negative has p = 0 & q = 1;
+     p = 0; q = 1; 
+
+ ''')
+
+###################################
+# default simulation
+
+result = r.simulate(timeBegin, timeEnd, timePoint, ['time', 'X1', 'J1'])
+#result = r.simulate(timeBegin, timeEnd, timePoint)
+Time = result['time']
+X1 = result['X1']
+
+
+###################################
+##  negative feedback
+r.reset()
+r.p = 0; r.q = 1 # negative feedback
+r.K = 100  # larger K means weaker feedback
+r.n = 2  # larger n means more digital-like response
+sc  = 5.25 # use 0.29 for positive, 0.31 for negative
+r.a = r.a*sc; r.a0 = r.a0*sc # scaling production
+
+# running simulation
+result_ng = r.simulate(timeBegin, timeEnd, timePoint)
+Time_ng = result_ng['time']
+X1_ng = result_ng['X1']
+r.a = r.a/sc; r.a0 = r.a0/sc # scaling production
+
+###############
+### positive feedback
+
+r.reset()
+r.p = 1; r.q = 0; # positive feedback
+r.K = 100  # larger K means weaker feedback
+r.n = 2  # larger n means more digital-like response
+sc  = 1.02# use 0.29 for positive, 0.31 for negative
+r.a = r.a*sc; r.a0 = r.a0*sc # scaling production
+
+
+# running simulation
+result_ps = r.simulate(timeBegin, timeEnd, timePoint)
+Time_ps = result_ps['time']
+X1_ps = result_ps['X1']
+
+
+##########
+
+
+## generate a plot
+plt.plot(Time, X1, color = 'k', ls = '-', label = 'constitutive')    
+plt.plot(Time_ng, X1_ng, color = 'k', ls = ':', label = 'autorepression', linewidth = 5)
+plt.plot(Time_ps, X1_ps, color = 'k', ls = '--', label = 'autoactivation')
+plt.legend(loc = 'lower right')
+plt.ylabel('concentration')
+plt.xlabel('time')
+plt.xlim(timeBeginPlot, timeEnd)
+plt.title('Feedback response')
+
+
+
+
+#######################
+# set axis limit
+#plt.ylim(-0.1, 1.5)
+#plt.xlim(-0.1, 10)
+
+plt.show()
